@@ -18,7 +18,7 @@ for movieId, row in data1.iterrows():
     title = row[0][0][0:-6]
     year = row[0][0][-5:-1]
     data1b = data1b.append({'movieId': movieId, 'title':title, 'year' : year, 'genres' : row[1][0]},ignore_index=True)
-print(data1b.head())
+#print(data1b.head())
 #combine ratings into array by movieId.
 data3 = data3.groupby(['movieId']).agg(list)
 data3b = pd.DataFrame(columns = ['movieId','ratings'])
@@ -45,7 +45,7 @@ df2 = df1.merge(data4b, how='left', on='movieId', right_index=False)
 #combine ratings into movies
 df3 = df2.merge(data3b, how='left', on='movieId', right_index=False)
 #split genres into array
-df3["genres"] = df3["genres"].str.split('|')
+#df3["genres"] = df3["genres"].str.split('|')
 
 print(df3.head())
 df3.to_csv('movie_ratings.csv',index=False)
