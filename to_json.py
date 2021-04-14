@@ -18,7 +18,6 @@ data1b = pd.DataFrame(columns = ['movieId','tags'])
 #for item in data1['tags']:
 for movieId, row in data1.iterrows():
     item = row['tags'][0]
-    item2 = row['ratings'][0]
 #    print(item2)
     if isinstance(item,float) and math.isnan(item):
         continue;
@@ -60,14 +59,31 @@ for movieId, row in data1.iterrows():
             i +=2
         data1c = data1c.append({'movieId':movieId, 'ratings':items}, ignore_index=True)
 
+#make json format of genome tags
+data1d = pd.DataFrame(columns = ['movieId','genome_tags'])
+
+for movieId, row in data1.iterrows():
+    item = row['genome_tags'][0]
+    if isinstance(item,float) and math.isnan(item):
+        continue;
+    else:
+        items = []
+        item = item.replace('[', '')
+        item = item.replace(']', '')
+        v = item.split(',')
+        i =0
+        while i < int((len(v)+.5)/2):
+            items.append({'genome_tag': v[i], 'relevance':v[i+1] })
+            i +=2
+        data1d = data1d.append({'movieId':movieId, 'genome_tags':items}, ignore_index=True)
 
 
 data1 = pd.read_csv('movie_ratings.csv')
-data1 = data1.drop(columns=['tags','ratings'])
+data1 = data1.drop(columns=['tags','ratings','genome_tags'])
 data1["genres"] = data1["genres"].str.split('|')
 df1 = data1.merge(data1b, how='left', on='movieId', right_index=False)
 df1 = df1.merge(data1c, how='left', on='movieId', right_index=False)
-
+df1 = df1.merge(data1d, how='left', on='movieId', right_index=False)
 print(df1.head())
 
 out = df1.to_json(orient = 'records')#.strip('[]').replace('},', '}')
