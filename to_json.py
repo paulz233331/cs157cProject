@@ -30,8 +30,11 @@ for movieId, row in data1.iterrows():
         v = item.split(',')
         i =0
         while i < int((len(v)+.5)/2):
-#            print(v[i])
-#            print (v[i+1])
+            v[i] = v[i].replace(' ','')
+            #print(v[i])
+            v[i+1] = v[i+1].replace('\'','')
+            v[i+1] = v[i+1].replace(' ','')
+            #print (v[i+1])
             items.append({'userId': v[i], 'tag':v[i+1] })
             i +=2
 #        print(items)
@@ -67,7 +70,7 @@ df1 = df1.merge(data1c, how='left', on='movieId', right_index=False)
 
 print(df1.head())
 
-out = df1.to_json(orient='records')
+out = df1.to_json(orient = 'records')#.strip('[]').replace('},', '}')
 
 with open('movie_ratings.json', 'w') as f:
     f.write(out)

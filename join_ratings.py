@@ -15,7 +15,7 @@ data4 = pd.read_csv('tags.csv')
 data1 = data1.groupby(['movieId']).agg(list)
 data1b = pd.DataFrame(columns = ['movieId','title','year','genres'])
 for movieId, row in data1.iterrows():
-    title = row[0][0][0:-6]
+    title = row[0][0][0:-7]
     year = row[0][0][-5:-1]
     data1b = data1b.append({'movieId': movieId, 'title':title, 'year' : year, 'genres' : row[1][0]},ignore_index=True)
 #print(data1b.head())
