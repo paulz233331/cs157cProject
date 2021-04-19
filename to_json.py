@@ -1,3 +1,4 @@
+#30 minutes
 import pandas as pd
 import json
 import re
@@ -15,31 +16,31 @@ data1 = pd.read_csv('movie_ratings.csv')
 data1 = data1.groupby(['movieId']).agg(list)
 data1b = pd.DataFrame(columns = ['movieId','tags'])
 
-#for item in data1['tags']:
 for movieId, row in data1.iterrows():
     item = row['tags'][0]
-#    print(item2)
     if isinstance(item,float) and math.isnan(item):
         continue;
     else:
         items = []
         item = item.replace('[', '')
         item = item.replace(']', '')
-#        print(item)
         v = item.split(',')
         i =0
         while i < int((len(v)+.5)/2):
             v[i] = v[i].replace(' ','')
-            #print(v[i])
             v[i+1] = v[i+1].replace('\'','')
             v[i+1] = v[i+1].replace(' ','')
-            #print (v[i+1])
-            items.append({'userId': v[i], 'tag':v[i+1] })
-            i +=2
-#        print(items)
+            if v[i].strip().isdigit() and v[i+2].strip().isdigit():
+                items.append({'userId': int(v[i]), 'tag':v[i+1], 'timestamp':int(v[i+2]) })        
+            else:
+                j = i
+                while not v[i+2].strip().isdigit():
+                    v[j+1] = v[j+1] + v[j+2].replace('\'','')
+                    v[j+2] = v[i+3]
+                    i+=1
+                items.append({'userId': int(v[j]), 'tag':v[j+1], 'timestamp':int(v[j+2]) })
+            i +=3
         data1b = data1b.append({'movieId':movieId, 'tags':items}, ignore_index=True)
-        #input()
-        #print(data1b)
 
 #make json format of ratings
 data1c = pd.DataFrame(columns = ['movieId','ratings'])
@@ -55,8 +56,8 @@ for movieId, row in data1.iterrows():
         v = item.split(',')
         i =0
         while i < int((len(v)+.5)/2):
-            items.append({'userId': v[i], 'rating':v[i+1] })
-            i +=2
+            items.append({'userId': int(v[i]), 'rating': float(v[i+1]), 'timestamp':int(v[i+2]) }) #revision1
+            i +=3
         data1c = data1c.append({'movieId':movieId, 'ratings':items}, ignore_index=True)
 
 #make json format of genome tags
@@ -71,22 +72,27 @@ for movieId, row in data1.iterrows():
         item = item.replace('[', '')
         item = item.replace(']', '')
         v = item.split(',')
+        v[i+1] = v[i+1].replace('\'','')
+        v[i+1] = v[i+1].strip()
         i =0
         while i < int((len(v)+.5)/2):
-            items.append({'genome_tag': v[i], 'relevance':v[i+1] })
-            i +=2
+            items.append({'tagId': int(v[i]), 'genome_tag': v[i+1], 'relevance':float(v[i+2]) })
+            i +=3
         data1d = data1d.append({'movieId':movieId, 'genome_tags':items}, ignore_index=True)
 
 
+#drop columns
 data1 = pd.read_csv('movie_ratings.csv')
 data1 = data1.drop(columns=['tags','ratings','genome_tags'])
+#split genres into array
 data1["genres"] = data1["genres"].str.split('|')
+#merge JSON formatted columns for nested documents
 df1 = data1.merge(data1b, how='left', on='movieId', right_index=False)
 df1 = df1.merge(data1c, how='left', on='movieId', right_index=False)
 df1 = df1.merge(data1d, how='left', on='movieId', right_index=False)
 print(df1.head())
 
-out = df1.to_json(orient = 'records')#.strip('[]').replace('},', '}')
+out = df1.to_json(orient = 'records')
 
 with open('movie_ratings.json', 'w') as f:
     f.write(out)

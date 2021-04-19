@@ -1,3 +1,4 @@
+#45 minutes
 import pandas as pd
 
 pd.set_option('display.max_columns', None)
@@ -18,10 +19,14 @@ data6 = pd.read_csv('genome_tags.csv')
 data1 = data1.groupby(['movieId']).agg(list)
 data1b = pd.DataFrame(columns = ['movieId','title','year','genres'])
 for movieId, row in data1.iterrows():
-    title = row[0][0][0:-7]
-    year = row[0][0][-5:-1]
-    data1b = data1b.append({'movieId': movieId, 'title':title, 'year' : year, 'genres' : row[1][0]},ignore_index=True)
-#print(data1b.head())
+    ly = row[0][0].rfind("(")
+    ry = row[0][0].rfind(")")
+    title = row[0][0][0:ly].strip()
+    year = row[0][0][ly+1:ry].strip()
+    if not year.isdigit():
+        title = title + "(" + year.strip() + ")"
+        year = 0
+    data1b = data1b.append({'movieId': movieId, 'title':title, 'year' : int(year or 0), 'genres' : row[1][0]},ignore_index=True)
     
 #combine ratings into array by movieId.
 data3 = data3.groupby(['movieId']).agg(list)
@@ -30,7 +35,7 @@ data3b = pd.DataFrame(columns = ['movieId','ratings'])
 for movieId, row in data3.iterrows():
     arr = []  
     for i in range(len(row[0])):
-        arr.append([row[0][i],row[1][i]])
+        arr.append([row[0][i],row[1][i],row[2][i]])
     data3b = data3b.append({'movieId':movieId, 'ratings':arr}, ignore_index=True) 
 
 #combine tags into array by movieId
@@ -40,7 +45,7 @@ data4b = pd.DataFrame(columns = ['movieId','tags'])
 for movieId, row in data4.iterrows():
     arr = []
     for i in range(len(row[0])):
-        arr.append([row[0][i],row[1][i]])
+        arr.append([row[0][i],row[1][i],row[2][i]])
     data4b = data4b.append({'movieId':movieId, 'tags': arr}, ignore_index =True)
 
 #combine genome tags into array by movieId
@@ -52,7 +57,7 @@ data5b = pd.DataFrame(columns = ['movieId','genome_tags'])
 for movieId, row in data5.iterrows():
     arr = []
     for i in range(len(row[0])):
-        arr.append([row[2][i],row[1][i]])
+        arr.append([row[0][i],row[2][i],row[1][i]])
     data5b = data5b.append({'movieId': movieId, 'genome_tags':arr},ignore_index=True)
 #print(data5b.head())
 
@@ -63,9 +68,6 @@ df1 = df1.merge(data4b, how='left', on='movieId', right_index=False)
 df1 = df1.merge(data3b, how='left', on='movieId', right_index=False)
 #combine genome tags into movies
 df1 = df1.merge(data5b, how='left', on='movieId', right_index=False)
-
-#split genres into array
-#df3["genres"] = df3["genres"].str.split('|')
 
 print(df1.head())
 df1.to_csv('movie_ratings.csv',index=False)

@@ -1,0 +1,21 @@
+
+mkdir -p /db/config/data
+mongod --port 27022 --dbpath /db/config/data --configsvr --replSet config
+
+mongo --port 27022
+rs.initiate()
+
+mongos --configdb config/127.0.0.1:27022 --port 27021 
+
+ mkdir -p /db/shard0/data
+ mongod --port 27023 --dbpath /db/shard0/data  --shardsvr
+ mkdir -p /db/shard1/data
+ mongod --port 27024 --dbpath /db/shard1/data  --shardsvr
+
+mongo 127.0.0.1:27021
+sh.addShard("127.0.0.1:27023")
+sh.addShard("127.0.0.1:27024")
+
+db.printShardingStatus()
+sh.enableSharding("testdb")
+sh.shardCollection("testdb.movie_ratings", {movieId:1})
