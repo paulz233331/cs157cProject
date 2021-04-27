@@ -1,21 +1,30 @@
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import warnings
+from tmdbv3api import TMDb
+from tmdbv3api import Movie
 
 # Ignore deprecation warning for PyMongo's count() method
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+def is_integer(n):
+    try:
+        float(n)
+    except ValueError:
+        return False
+    else:
+        return float(n).is_integer()
 
 def main():
     try:
         # Create connection
-        client = MongoClient('localhost', 27017, serverSelectionTimeoutMS=3000)
+        client = MongoClient('localhost', 27021, serverSelectionTimeoutMS=3000)
 
         # Test connection
         client.admin.command('ismaster')
 
         # Start main loop
-        main_loop(client.moviedb.movie_ratings)
+        main_loop(client.testdb.movie_ratings)
     except ConnectionFailure:
         print('Connection to MongoDB failed')
 
@@ -26,17 +35,17 @@ def main_loop(movie_ratings):
         '[1] Find a movie',
         '[2] Find the average rating for a movie',
         '[3] Find the movie count for each genre',
-        '[4] Find movies with tags',
-        '[5] Find movies for a genre',
+        '[4] Find movies for a genre',
+        '[5] Find movies with tags',
         '[6] Find the highest rated movies for a genre',
         '[7] Find the highest rated movies for a year',
-        '[8] Find the overview for a movie',
-        '[9] Find the IMDb and TMDb IDs for a movie',
+        '[8] Find the overview and popularity of a movie',
+        '[9] Find the IMDb and TMDb IDs for a movie', #replace
         '[10] Find the cast members for a movie (probably change this)',
         '[11] Find the crew members for a movie (probably change this)',
         '[12] Find the lowest rated movies',
         '[13] Find the average movie ratings per year',
-        '[14] Find the movie and genome tags with the highest relevance scores',
+        '[14] Find the most relevant tags for a movie',
         '[15] Find the counts of each rating for a movie',
         '[16] Quit'
     ]
@@ -69,34 +78,101 @@ def main_loop(movie_ratings):
 
 def run_option_1(movie_ratings):
     # Prompt for title
-    title = input('Please enter a movie title: ')
-
-    # Query MongoDB
-    results = movie_ratings.find(
-        {'title': title},
-        {'ratings': 0, 'tags': 0, 'genome_tags': 0}
-    ).limit(5)
-
-    # Print results
-    print(str(results.count()) + ' movie(s) found for title: ' + title)
-    for result in results:
-        print(result)
+    title = input('Please enter a movie title or movieId: ')
+    if is_integer(title):
+        results= movie_ratings.find(
+            {'movieId': int(title)},
+            {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        ).limit(5)
+        for result in results:
+            print(result)
+    else:
+        # Query MongoDB
+        results = movie_ratings.find(
+            {'title': title},
+            {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        ).limit(5)
+        # Print results
+        for result in results:
+            print(result)
+        query = { "$text" : {"$search" : "\"" + title + "\""} }
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project).limit(5)
+        print(str(results.count()) + ' similar movie(s) found for title: ' + title)
+        for result in results:
+            print(result)
 
 
 def run_option_2(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    if is_integer(title):
+        pipeline = [
+            { "$match": { "movieId": int(title) } },
+            { "$unwind": "$ratings" },
+            { "$group": {
+                "_id": {"movieId":"$movieId", "title":"$title" },
+                "avgRatings": { "$avg": "$ratings.rating" }
+                }
+            }
+        ]
+        results=movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
+    else:
+        pipeline = [
+            { "$match": { "title": title } },
+            { "$unwind": "$ratings" },
+            { "$group": {
+                "_id": {"movieId":"$movieId", "title":"$title" },
+                "avgRatings": { "$avg": "$ratings.rating" }
+                }
+            }
+        ]
+        results=movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
+
+        pipeline = [
+            { "$match": { "$text" : { "$search": "\"" + title + "\"" } } },
+            { "$unwind": "$ratings" },
+            { "$group": {
+                "_id": {"movieId":"$movieId", "title":"$title" },
+                "avgRatings": { "$avg": "$ratings.rating" }
+                }
+            },
+            { "$limit" : 5 }
+        ]
+        results = movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
 
 
 def run_option_3(movie_ratings):
     pass
 
-
 def run_option_4(movie_ratings):
-    pass
-
+    genre = input('Please enter a genre or genres separated by space: ')
+    genres = genre.split(' ')
+    query = { "genres": { "$all": genres } }
+    project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+    results = movie_ratings.find(query,project).limit(5)
+    print(str(results.count()) + ' similar movie(s) found for genre(s): ' + genre)
+    for result in results:
+        print(result)
 
 def run_option_5(movie_ratings):
-    pass
+    tag = input('Please enter a tag or tags separated by space: ')
+    tags = tag.split(' ')
+    query = { "$or": [
+                { "tags.tag": { "$all": tags } },
+                { "genome_tags.genome_tag": { "$all": tags } }
+                ]
+            }
+    project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+    results = movie_ratings.find(query,project).limit(5)
+    print(str(results.count()) + ' similar movie(s) found for tag(s): ' + tag)
+    for result in results:
+        print(result)
 
 
 def run_option_6(movie_ratings):
@@ -108,19 +184,115 @@ def run_option_7(movie_ratings):
 
 
 def run_option_8(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    tmdbId = 0
+    if is_integer(title):
+        query = {"movieId" : int(title)}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    else:
+        query = {"title" : title}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    
+    #connect to tmdb
+        
+    tmdb = TMDb()
+    tmdb.api_key = '9bcd808ab6fc59d3ed747c98701b9e3f'
+    tmdb.language = 'en'
+    tmdb.debug = True
+
+    movie = Movie()
+    m = movie.details(tmdbId) 
+    print(m.title + ". " + m.overview)
+    print("Popularity: " + str(m.popularity))
 
 
 def run_option_9(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    tmdbId = 0
+    if is_integer(title):
+        query = {"movieId" : int(title)}
+        project = {'year':0, 'genres':0, 'ratings': 0, 'tags': 0, 'genome_tags':0}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            print(result)
+    else:
+        query = {"title" : title}
+        project = {'year':0, 'genres':0, 'ratings': 0, 'tags': 0, 'genome_tags':0}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            print(result)
 
-
+    
 def run_option_10(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    tmdbId = 0
+    if is_integer(title):
+        query = {"movieId" : int(title)}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    else:
+        query = {"title" : title}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    
+    #connect to tmdb
+        
+    tmdb = TMDb()
+    tmdb.api_key = '9bcd808ab6fc59d3ed747c98701b9e3f'
+    tmdb.language = 'en'
+    tmdb.debug = True
+
+    movie = Movie()
+    m = movie.details(tmdbId)
+    cast = getattr(m.casts,'cast','n/a')
+    castmbrs = "Cast members of " + m.title + ": "
+    for k in cast:
+        castmbrs += k['name'] + ", "
+    castmbrs = castmbrs[:-1]
+    print(castmbrs)
 
 
 def run_option_11(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    tmdbId = 0
+    if is_integer(title):
+        query = {"movieId" : int(title)}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    else:
+        query = {"title" : title}
+        project = {'ratings': {"$slice":1}, 'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}
+        results = movie_ratings.find(query,project)
+        for result in results:
+            tmdbId = int(result['tmdbId'])
+    
+    #connect to tmdb
+        
+    tmdb = TMDb()
+    tmdb.api_key = '9bcd808ab6fc59d3ed747c98701b9e3f'
+    tmdb.language = 'en'
+    tmdb.debug = True
+
+    movie = Movie()
+    m = movie.details(tmdbId)
+    crew = getattr(m.casts, 'crew','n/a')
+    crwbrs = "Crew members of " + m.title + ": "
+    for k in crew:
+        crwbrs += k['name'] + ": " + k['department'] + " - " + k['job'] + ", "
+    crwbrs = crwbrs[:-1]
+    print(crwbrs)
 
 
 def run_option_12(movie_ratings):
@@ -132,7 +304,51 @@ def run_option_13(movie_ratings):
 
 
 def run_option_14(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    if is_integer(title):
+        pipeline = [
+            { "$match": { "movieId": int(title) } },
+            { "$unwind": "$genome_tags" },
+            { "$group": {
+                "_id": {"movieId":"$movieId", "title":"$title", "tag": "$genome_tags.genome_tag"},
+                "maxRelevance": { "$max": "$genome_tags.relevance" }
+                }
+            },
+            { "$sort": { "maxRelevance": -1 } },
+            { "$limit" : 5 }
+        ]
+        results=movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
+    else:
+        pipeline = [
+            { "$match": { "title": title } },
+            { "$unwind": "$genome_tags" },
+            { "$group": {
+                "_id": {"movieId":"$movieId", "title":"$title","tag": "$genome_tags.genome_tag"},
+                "maxRelevance": { "$max": "$genome_tags.relevance" }
+                }
+            },
+            { "$sort": { "maxRelevance": -1 } },
+            { "$limit" : 5 }
+        ]
+        results=movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
+
+        pipeline = [
+            { "$match": { "$text" : { "$search":  "\"" + title + "\"" } } },
+            { "$unwind": "$genome_tags" },
+            { "$group": {
+                "_id": {"movieId":"$movieId","title":"$title", "tag": "$genome_tags.genome_tag"},
+                "maxRelevance": { "$max": "$genome_tags.relevance" }
+                }
+            },
+            { "$limit" : 5 }
+        ]
+        results = movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
 
 
 def run_option_15(movie_ratings):
