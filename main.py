@@ -148,7 +148,23 @@ def run_option_2(movie_ratings):
 
 
 def run_option_3(movie_ratings):
-    pass
+    pipeline = [
+        {"$unwind": "$genres" },
+        {"$group": {
+            "_id": "$genres", 
+            "count": { "$sum": 1 }
+            }
+        },
+        {"$project": {
+            "_id": 0,
+            "genre": "$_id",
+            "count": 1
+            }
+        }
+    ]
+    results = movie_ratings.aggregate(pipeline)
+    for result in results:
+        print(result)
 
 def run_option_4(movie_ratings):
     genre = input('Please enter a genre or genres separated by space: ')
@@ -176,11 +192,39 @@ def run_option_5(movie_ratings):
 
 
 def run_option_6(movie_ratings):
-    pass
+    genre = input('Please enter a specific genre: ')
+    pipeline = [
+        { "$match": {"$expr": {"$in": [genre, "$genres"]}}},
+        { "$unwind": "$ratings" },
+        { "$group": {
+            "_id": {"movieId":"$movieId", "title":"$title"},
+            "avgRatings": { "$avg": {"$convert": {"input":{"$trim": { "input": "$ratings.rating" }}, "to":"double"} }}
+            }
+        },
+        {"$sort": {"avgRatings": -1}},
+        { "$limit" : 5 }
+    ]
+    results = movie_ratings.aggregate(pipeline)
+    for result in results:
+        print(result)
 
 
 def run_option_7(movie_ratings):
-    pass
+    year = input('Please enter a specific year: ')
+    pipeline = [
+        { "$match": {"year": year}},
+        { "$unwind": "$ratings" },
+        { "$group": {
+            "_id": {"movieId":"$movieId", "title":"$title"},
+            "avgRatings": { "$avg": {"$convert": {"input":{"$trim": { "input": "$ratings.rating" }}, "to":"double"} }}
+            }
+        },
+        {"$sort": {"avgRatings": -1}},
+        { "$limit" : 5 }
+    ]
+    results = movie_ratings.aggregate(pipeline)
+    for result in results:
+        print(result)
 
 
 def run_option_8(movie_ratings):
