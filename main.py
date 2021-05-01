@@ -200,8 +200,7 @@ def run_option_6(movie_ratings):
             "_id": {"movieId":"$movieId", "title":"$title"},
             "avgRatings": { "$avg": "$ratings.rating" }
             }
-        },
-        {"$sort": {"avgRatings": -1}},
+        },{"$sort": {"avgRatings": -1}},
         { "$limit" : 5 }
     ]
     results = movie_ratings.aggregate(pipeline)
@@ -212,7 +211,7 @@ def run_option_6(movie_ratings):
 def run_option_7(movie_ratings):
     year = input('Please enter a specific year: ')
     pipeline = [
-        { "$match": {"year": year}},
+        { "$match": {"year": int(year)}},
         { "$unwind": "$ratings" },
         { "$group": {
             "_id": {"movieId":"$movieId", "title":"$title"},
@@ -222,6 +221,7 @@ def run_option_7(movie_ratings):
         {"$sort": {"avgRatings": -1}},
         { "$limit" : 5 }
     ]
+
     results = movie_ratings.aggregate(pipeline)
     for result in results:
         print(result)
