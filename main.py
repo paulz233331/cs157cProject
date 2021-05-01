@@ -18,7 +18,7 @@ def is_integer(n):
 def main():
     try:
         # Create connection
-        client = MongoClient('localhost', 27021, serverSelectionTimeoutMS=3000)
+        client = MongoClient('localhost', 27021, serverSelectionTimeoutMS=3000, retryWrites=False)
 
         # Test connection
         client.admin.command('ismaster')
@@ -254,7 +254,13 @@ def run_option_8(movie_ratings):
     m = movie.details(tmdbId) 
     print(m.title + ". " + m.overview)
     print("Popularity: " + str(m.popularity))
-
+    if is_integer(title):
+    	results = movie_ratings.update_one({'movieId' : int(title)},
+    	    { '$set' : { "overview" : m.overview, "popularity" : m.popularity } })
+    else:
+    	results = movie_ratings.update_one({'title' : title},
+    	    { '$set' : { "overview" : m.overview, "popularity" : m.popularity  } })
+    print( "Updated " + str(results.modified_count) + " document.")
 
 def run_option_9(movie_ratings):
     title = input('Please enter a movie title or movieId: ')
@@ -304,6 +310,13 @@ def run_option_10(movie_ratings):
         castmbrs += k['name'] + ", "
     castmbrs = castmbrs[:-1]
     print(castmbrs)
+    if is_integer(title):
+    	results = movie_ratings.update_one({'movieId' : int(title)},
+    	    { '$set' : { "cast" : castmbrs } })
+    else:
+    	results = movie_ratings.update_one({'title' : title},
+    	    { '$set' : { "cast" : castmbrs } })
+    print( "Updated " + str(results.modified_count) + " document.")
 
 
 def run_option_11(movie_ratings):
@@ -337,6 +350,13 @@ def run_option_11(movie_ratings):
         crwbrs += k['name'] + ": " + k['department'] + " - " + k['job'] + ", "
     crwbrs = crwbrs[:-1]
     print(crwbrs)
+    if is_integer(title):
+    	results = movie_ratings.update_one({'movieId' : int(title)},
+    	    { '$set' : { "crew" : crwbrs } })
+    else:
+    	results = movie_ratings.update_one({'title' : title},
+    	    { '$set' : { "crew" : crwbrs } })
+    print( "Updated " + str(results.modified_count) + " document.")
 
 
 def run_option_12(movie_ratings):
