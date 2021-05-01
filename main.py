@@ -416,7 +416,53 @@ def run_option_14(movie_ratings):
 
 
 def run_option_15(movie_ratings):
-    pass
+    title = input('Please enter a movie title or movieId: ')
+    if is_integer(title):
+        pipeline = [
+            { "$match": { "movieId" :int(title) } },
+            { "$unwind": "$ratings" },
+            { "$group": {
+                "_id":  {"title":"$title",
+			    "rating":"$ratings.rating"},
+                "count": { "$sum": 1 }
+                }
+            },
+            { "$group": {
+                "_id": "$_id.title",
+                "counts": {
+                    "$push": {
+                        "rating": "$_id.rating",
+                        "count": "$count"
+                    }
+                }
+            } }
+        ]
+        results = movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
+    else:
+        pipeline = [
+            { "$match": { "title" :title } },
+            { "$unwind": "$ratings" },
+            { "$group": {
+                "_id":  {"title":"$title",
+			    "rating":"$ratings.rating"},
+                "count": { "$sum": 1 }
+                }
+            },
+            { "$group": {
+                "_id": "$_id.title",
+                "counts": {
+                    "$push": {
+                        "rating": "$_id.rating",
+                        "count": "$count"
+                    }
+                }
+            } }
+        ]
+        results = movie_ratings.aggregate(pipeline)
+        for result in results:
+            print(result)
 
 
 if __name__ == '__main__':
