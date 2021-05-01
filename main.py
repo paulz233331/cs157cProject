@@ -198,7 +198,7 @@ def run_option_6(movie_ratings):
         { "$unwind": "$ratings" },
         { "$group": {
             "_id": {"movieId":"$movieId", "title":"$title"},
-            "avgRatings": { "$avg": {"$convert": {"input":{"$trim": { "input": "$ratings.rating" }}, "to":"double"} }}
+            "avgRatings": { "$avg": "$ratings.rating" }
             }
         },
         {"$sort": {"avgRatings": -1}},
@@ -216,7 +216,7 @@ def run_option_7(movie_ratings):
         { "$unwind": "$ratings" },
         { "$group": {
             "_id": {"movieId":"$movieId", "title":"$title"},
-            "avgRatings": { "$avg": {"$convert": {"input":{"$trim": { "input": "$ratings.rating" }}, "to":"double"} }}
+            "avgRatings": { "$avg":  "$ratings.rating" }
             }
         },
         {"$sort": {"avgRatings": -1}},
