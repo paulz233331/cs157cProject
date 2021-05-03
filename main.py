@@ -38,12 +38,12 @@ def main_loop(movie_ratings):
         '[4] Find movies for a genre',
         '[5] Find movies with tags',
         '[6] Find the highest rated movies for a genre',
-        '[7] Find the highest rated movies for a year',
+        '[7] Find the highest rated movies for a year',  #'[12] Find the lowest rated movies',
         '[8] Find the overview and popularity of a movie',
         '[9] Find the IMDb and TMDb IDs for a movie', #replace
         '[10] Find the cast members for a movie (probably change this)',
         '[11] Find the crew members for a movie (probably change this)',
-        '[12] Find the lowest rated movies',
+        '[12] Find the movies in a genre with tags',
         '[13] Find the average movie ratings per year',
         '[14] Find the most relevant tags for a movie',
         '[15] Find the counts of each rating for a movie',
@@ -360,8 +360,18 @@ def run_option_11(movie_ratings):
 
 
 def run_option_12(movie_ratings):
-    pass
-
+    genre = input('Please enter a genre or genres separated by space: ')
+    genres = genre.split(' ')
+    tag = input('Please enter a tag or tags separated by space: ')
+    tags = tag.split(' ')
+    results = movie_ratings.find( { "genres": { "$all": genres }, 
+                "$or": [{ "tags.tag": { "$all": tags } },
+        { "genome_tags.genome_tag": { "$all": tags } }
+        ]}, {'ratings': {"$slice":1},
+             'tags': {"$slice":1}, 'genome_tags': {"$slice":1}}).limit(5)
+    print(str(results.count()) + ' similar movie(s) found for tag(s) ' + str(tags) + " in genre(s) " + str(genres))
+    for result in results:
+        print(result)
 
 def run_option_13(movie_ratings):
     pass
