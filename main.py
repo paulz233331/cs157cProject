@@ -44,9 +44,6 @@ def main_loop(movie_ratings):
         '[10] Find the cast members for a movie',
         '[11] Find the crew members for a movie',
         '[12] Find the movies in a genre with tags',
-        '[10] Find the cast members for a movie',
-        '[11] Find the crew members for a movie',
-        '[12] Find the lowest rated movies',
         '[13] Find the average movie ratings per year',
         '[14] Find the most relevant tags for a movie',
         '[15] Find the counts of each rating for a movie',
@@ -74,6 +71,7 @@ def main_loop(movie_ratings):
         if run_option in globals():
             globals()[run_option](movie_ratings)
         elif choice != quit_option:
+            print(choice + "   " + quit_option)
             print('Invalid choice, please try again')
 
     print('Thank you for using Movie Ratings and Search')
@@ -377,8 +375,23 @@ def run_option_12(movie_ratings):
         print(result)
 
 def run_option_13(movie_ratings):
-    pass
-
+    results = movie_ratings.aggregate([
+    {"$unwind": "$ratings" },
+    {"$group": {
+    "_id": "$year",
+    "avgRatings": { "$avg": "$ratings.rating" }
+    }
+    },
+    {"$project": {
+    "_id": 0,
+    "year": "$_id",
+    "avgRatings": 1
+    }
+    },
+    { "$sort": { "year": -1 } }
+    ])
+    for result in results:
+        print(result)
 
 def run_option_14(movie_ratings):
     title = input('Please enter a movie title or movieId: ')
