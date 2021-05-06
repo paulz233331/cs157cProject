@@ -268,16 +268,12 @@ def run_option_9(movie_ratings):
     tmdbId = 0
     if is_integer(title):
         query = {"movieId" : int(title)}
-        project = {'year':0, 'genres':0, 'ratings': 0, 'tags': 0, 'genome_tags':0}
-        results = movie_ratings.find(query,project)
-        for result in results:
-            print(result)
     else:
         query = {"title" : title}
-        project = {'year':0, 'genres':0, 'ratings': 0, 'tags': 0, 'genome_tags':0}
-        results = movie_ratings.find(query,project)
-        for result in results:
-            print(result)
+    project = {'title': 1, 'imdbId':1, 'tmdbId':1}
+    results = movie_ratings.find(query,project)
+    for result in results:
+        print(result)
 
     
 def run_option_10(movie_ratings):
